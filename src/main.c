@@ -7,14 +7,18 @@
 #define WINDOW_MIN_HEIGHT 0
 
 #define SQUARE_SIZE 100
-#define MOVE_STEP SQUARE_SIZE
+#define MOVE_STEP 5
 #define GRAVITY 1
 #define TIMER_INTERVAL 30
+#define JUMP_INITIAL_VELOCITY -20
 
 // Global variables to store the square's position and velocity
 int squareX = SQUARE_SIZE;
-int squareY = SQUARE_SIZE;
+int squareY = WINDOW_MAX_HEIGHT - SQUARE_SIZE; // Start at the bottom
 int velocityY = 0;
+int isJumping = 0;
+int moveLeft = 0;
+int moveRight = 0;
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -58,17 +62,30 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     break;
 
     case WM_TIMER:
-        // Apply gravity to the vertical velocity
-        velocityY += GRAVITY;
+        // Apply gravity to the vertical velocity if the square is jumping
+        if (isJumping) {
+            velocityY += GRAVITY;
 
-        // Update the square's position
-        squareY += velocityY;
+            // Update the square's position
+            squareY += velocityY;
 
-        // Ensure the square stays within the window boundaries
-        if (squareY + SQUARE_SIZE > WINDOW_MAX_HEIGHT)
+            // Ensure the square stays within the window boundaries
+            if (squareY + SQUARE_SIZE > WINDOW_MAX_HEIGHT)
+            {
+                squareY = WINDOW_MAX_HEIGHT - SQUARE_SIZE;
+                velocityY = 0; // Reset velocity when hitting the ground
+                isJumping = 0; // Stop jumping
+            }
+        }
+
+        // Update the square's horizontal position based on the movement flags
+        if (moveLeft && squareX > WINDOW_MIN_WIDTH)
         {
-            squareY = WINDOW_MAX_HEIGHT - SQUARE_SIZE;
-            velocityY = 0; // Reset velocity when hitting the ground
+            squareX -= MOVE_STEP;
+        }
+        if (moveRight && squareX < (WINDOW_MAX_WIDTH - SQUARE_SIZE))
+        {
+            squareX += MOVE_STEP;
         }
 
         // Redraw the window to update the position of the square
@@ -81,35 +98,32 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         switch (wParam)
         {
         case VK_LEFT:
-            if (squareX > WINDOW_MIN_WIDTH)
-            {
-                squareX -= MOVE_STEP;
-            }
+            moveLeft = 1;
             break;
         case VK_RIGHT:
-            if (squareX < (WINDOW_MAX_WIDTH - SQUARE_SIZE))
-            {
-                squareX += MOVE_STEP;
-            }
+            moveRight = 1;
             break;
         case VK_UP:
-            if (squareY > WINDOW_MIN_HEIGHT)
+            if (!isJumping)
             {
-                squareY -= MOVE_STEP;
-                velocityY = 0; // Reset vertical velocity when moved up
-            }
-            break;
-        case VK_DOWN:
-            if (squareY < (WINDOW_MAX_HEIGHT - SQUARE_SIZE))
-            {
-                squareY += MOVE_STEP;
-                velocityY = 0; // Reset vertical velocity when moved down
+                velocityY = JUMP_INITIAL_VELOCITY; // Start the jump with an initial velocity
+                isJumping = 1; // Indicate that the square is jumping
             }
             break;
         }
-        // Redraw the window to update the position of the square
-        InvalidateRect(hwnd, NULL, TRUE);
-        UpdateWindow(hwnd);
+        break;
+
+    case WM_KEYUP:
+        // Handle arrow key releases to stop moving the square
+        switch (wParam)
+        {
+        case VK_LEFT:
+            moveLeft = 0;
+            break;
+        case VK_RIGHT:
+            moveRight = 0;
+            break;
+        }
         break;
 
     case WM_DESTROY:
