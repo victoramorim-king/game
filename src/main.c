@@ -8,17 +8,18 @@
 
 #define SQUARE_SIZE 100
 #define MOVE_STEP SQUARE_SIZE
+#define GRAVITY 1
+#define TIMER_INTERVAL 30
 
-// Global variables to store the square's position
+// Global variables to store the square's position and velocity
 int squareX = SQUARE_SIZE;
 int squareY = SQUARE_SIZE;
-
+int velocityY = 0;
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     static HBRUSH hRedBrush;
     static HBRUSH hBackgroundBrush;
-    // static HBRUSH hOldBrush;
 
     switch (uMsg)
     {
@@ -26,6 +27,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // Create brushes when the window is created
         hRedBrush = CreateSolidBrush(RGB(255, 0, 0));
         hBackgroundBrush = CreateSolidBrush(RGB(255, 255, 255)); // White background
+        // Set a timer to update the square's position regularly
+        SetTimer(hwnd, 1, TIMER_INTERVAL, NULL);
         break;
 
     case WM_PAINT:
@@ -54,6 +57,25 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     break;
 
+    case WM_TIMER:
+        // Apply gravity to the vertical velocity
+        velocityY += GRAVITY;
+
+        // Update the square's position
+        squareY += velocityY;
+
+        // Ensure the square stays within the window boundaries
+        if (squareY + SQUARE_SIZE > WINDOW_MAX_HEIGHT)
+        {
+            squareY = WINDOW_MAX_HEIGHT - SQUARE_SIZE;
+            velocityY = 0; // Reset velocity when hitting the ground
+        }
+
+        // Redraw the window to update the position of the square
+        InvalidateRect(hwnd, NULL, TRUE);
+        UpdateWindow(hwnd);
+        break;
+
     case WM_KEYDOWN:
         // Handle arrow key inputs to move the square
         switch (wParam)
@@ -65,7 +87,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
         case VK_RIGHT:
-            if (squareX < (WINDOW_MAX_WIDTH - (SQUARE_SIZE * 2) -1))
+            if (squareX < (WINDOW_MAX_WIDTH - SQUARE_SIZE))
             {
                 squareX += MOVE_STEP;
             }
@@ -74,12 +96,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (squareY > WINDOW_MIN_HEIGHT)
             {
                 squareY -= MOVE_STEP;
+                velocityY = 0; // Reset vertical velocity when moved up
             }
             break;
         case VK_DOWN:
-            if (squareY < (WINDOW_MAX_HEIGHT - (SQUARE_SIZE * 2) -1))
+            if (squareY < (WINDOW_MAX_HEIGHT - SQUARE_SIZE))
             {
                 squareY += MOVE_STEP;
+                velocityY = 0; // Reset vertical velocity when moved down
             }
             break;
         }
@@ -92,6 +116,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         // Clean up resources
         DeleteObject(hRedBrush);
         DeleteObject(hBackgroundBrush);
+        KillTimer(hwnd, 1);
         PostQuitMessage(0);
         return 0;
 
